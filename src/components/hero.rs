@@ -1,9 +1,36 @@
 use dioxus::prelude::*;
+use piper_rs::synth::PiperSpeechSynthesizer;
+use rodio::buffer::SamplesBuffer;
+use std::{path::Path, rc::Rc, sync::Arc};
 
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
 
 #[component]
 pub fn Hero() -> Element {
+    // Setup TTS engine
+    println!("Rerunning code synt creation");
+    let model = use_hook(|| {
+        let config_path = "en_US-libritts_r-medium.onnx.json";
+        piper_rs::from_config_path(Path::new(config_path)).unwrap()
+    });
+    let synth = Rc::new(PiperSpeechSynthesizer::new(model).unwrap());
+    let synth2 = synth.clone();
+    let synth3 = synth.clone();
+    let synth4 = synth.clone();
+    let synth5 = synth.clone();
+
+    // Sound sink
+    let mut sound_sink = use_signal(|| {
+        let (stream, handle) = rodio::OutputStream::try_default().unwrap();
+        let sink = rodio::Sink::try_new(&handle).unwrap();
+        Arc::new(SoundSink {
+            stream,
+            handle,
+            sink,
+        })
+    });
+
+    // The menu navigation
     let menu = use_signal(|| Menu {
         items: vec![
             (
@@ -42,7 +69,7 @@ pub fn Hero() -> Element {
                     button {
                         id: "Up",
                         onclick: move |event| {
-                            move_cursor(&mut cursor, &menu.read(), Dir::Up);
+                            move_menu_position(&mut cursor, &menu.read(), Dir::Up, &synth, &mut sound_sink);
                         },
                         "Up"
                     }
@@ -51,7 +78,7 @@ pub fn Hero() -> Element {
                     button {
                         id: "Down",
                         onclick: move |event| {
-                            move_cursor(&mut cursor, &menu.read(), Dir::Down);
+                            move_menu_position(&mut cursor, &menu.read(), Dir::Down, &synth2, &mut sound_sink);
                         },
                         "Down"
                     }
@@ -60,17 +87,25 @@ pub fn Hero() -> Element {
                     button {
                         id: "Left",
                         onclick: move |event| {
-                            move_cursor(&mut cursor, &menu.read(), Dir::Left);
+                            move_menu_position(&mut cursor, &menu.read(), Dir::Left, &synth3, &mut sound_sink);
                         },
                         "Left"
                     }
                     button {
                         id: "Right",
                         onclick: move |event| {
-                            move_cursor(&mut cursor, &menu.read(), Dir::Right);
+                            move_menu_position(&mut cursor, &menu.read(), Dir::Right, &synth4, &mut sound_sink);
                         },
                         "Right"
                     }
+                }
+                button {
+                    id: "Speak",
+                    onclick: move |event| {
+                        let current_text = cursor.read().last().map_or("Failed to find text to read", |v| v).to_owned();
+                        speak(&synth5, &mut sound_sink, &current_text );
+                    },
+                    "Speak"
                 }
             }
             div { id: "menu",
@@ -95,22 +130,25 @@ pub fn Hero() -> Element {
     }
 }
 
+#[derive(Clone, Debug)]
 enum MenuOrAction {
     Menu(Menu),
     Action(MenuAction),
 }
 
+#[derive(Clone, Debug)]
 enum MenuAction {
     Play,
     Pause,
     None,
 }
 
+#[derive(Clone, Debug)]
 struct Menu {
     items: Vec<(String, MenuOrAction)>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Dir {
     Up,
     Down,
@@ -118,7 +156,25 @@ enum Dir {
     Right,
 }
 
-fn move_cursor(cursor: &mut Signal<Vec<String>>, menu: &Menu, direction: Dir) {
+fn move_menu_position(
+    cursor: &mut Signal<Vec<String>>,
+    menu: &Menu,
+    direction: Dir,
+    synth: &PiperSpeechSynthesizer,
+    sound_sink: &mut Signal<Arc<SoundSink>>,
+) {
+    let (say, action) = update_cursor(cursor, menu, direction);
+    if let Some(say) = say {
+        speak(synth, sound_sink, &say);
+    }
+}
+
+// Return what to say, and what to do
+fn update_cursor(
+    cursor: &mut Signal<Vec<String>>,
+    menu: &Menu,
+    direction: Dir,
+) -> (Option<String>, Option<MenuAction>) {
     println!("Moving cursor {:?}", direction);
     if let Dir::Left = direction {
         let mut cursor = cursor.write();
@@ -126,23 +182,38 @@ fn move_cursor(cursor: &mut Signal<Vec<String>>, menu: &Menu, direction: Dir) {
         if cursor.len() > 1 {
             cursor.pop();
             println!("popped it!");
+            let new_menu_selection = cursor.last().unwrap();
+            return (Some(new_menu_selection.to_owned()), None);
         } else {
             println!("Can't pop it!");
+            return (None, None);
         }
-        return;
     };
 
     if let Dir::Right = direction {
         let mut submenu = Some(menu);
-        for selected in cursor.read().iter() {
-            submenu = match get_submenu(selected, submenu.unwrap()) {
-                Some(submenu) => Some(submenu),
-                None => return,
-            };
+        {
+            let cursor_read = cursor.read();
+            for (i, selected) in cursor_read.iter().enumerate() {
+                submenu = match get_menu_selection(selected, submenu.unwrap()) {
+                    MenuOrAction::Menu(submenu) => Some(submenu),
+                    MenuOrAction::Action(action) => {
+                        if i == cursor.len() - 1 {
+                            // Trying to go right on an action
+                            return (None, Some(action.clone()));
+                        } else {
+                            panic!(
+                                "Cursor is pointing at a menu item that does not exist: {selected}"
+                            );
+                        }
+                    }
+                };
+            }
         }
-        let mut cursor = cursor.write();
-        cursor.push(submenu.unwrap().items.first().unwrap().0.clone());
-        return;
+        let mut cursor_write = cursor.write();
+        let new_menu_item = submenu.unwrap().items.first().unwrap().0.clone();
+        cursor_write.push(new_menu_item.clone());
+        return (Some(new_menu_item), None);
     }
 
     let active_list = get_items_deep(&cursor.read(), menu).unwrap();
@@ -153,31 +224,38 @@ fn move_cursor(cursor: &mut Signal<Vec<String>>, menu: &Menu, direction: Dir) {
             match direction {
                 Dir::Up => {
                     if i == 0 {
-                        return;
+                        // Trying to go up, but already at top
+                        return (None, None);
                     } else {
-                        cursor[last_cursor_index] = active_list[i - 1].clone();
+                        let new_menu_item = active_list[i - 1].clone();
+                        cursor[last_cursor_index] = new_menu_item.clone();
+                        return (Some(new_menu_item), None);
                     }
                 }
                 Dir::Down => {
                     if i == active_list.len() - 1 {
-                        return;
+                        // Trying to go down, but already at bottom
+                        return (None, None);
                     } else {
-                        cursor[last_cursor_index] = active_list[i + 1].clone();
+                        let new_menu_item = active_list[i + 1].clone();
+                        cursor[last_cursor_index] = new_menu_item.clone();
+                        return (Some(new_menu_item), None);
                     }
                 }
                 _ => {}
             }
-            return;
+            return (None, None);
         }
     }
+    return (None, None);
 }
 
 fn get_items_deep(cursor: &[String], menu: &Menu) -> Option<Vec<String>> {
     let mut submenu = Some(menu);
     for selected in cursor.iter().take(cursor.len() - 1) {
-        submenu = match get_submenu(selected, submenu.unwrap()) {
-            Some(submenu) => Some(submenu),
-            None => return None,
+        submenu = match get_menu_selection(selected, submenu.unwrap()) {
+            MenuOrAction::Menu(submenu) => Some(submenu),
+            MenuOrAction::Action(_) => return None,
         };
     }
     Some(
@@ -190,12 +268,32 @@ fn get_items_deep(cursor: &[String], menu: &Menu) -> Option<Vec<String>> {
     )
 }
 
-fn get_submenu<'a>(menu_item: &str, menu: &'a Menu) -> Option<&'a Menu> {
+fn get_menu_selection<'a>(menu_item: &str, menu: &'a Menu) -> &'a MenuOrAction {
     menu.items
         .iter()
         .find(|(item, _)| item == &menu_item)
-        .and_then(|(_, menu_or_action)| match menu_or_action {
-            MenuOrAction::Menu(menu) => Some(menu),
-            _ => None,
-        })
+        .map(|(_, menu_or_action)| menu_or_action)
+        .unwrap()
+}
+
+struct SoundSink {
+    stream: rodio::OutputStream,
+    handle: rodio::OutputStreamHandle,
+    sink: rodio::Sink,
+}
+
+fn speak(synth: &PiperSpeechSynthesizer, sound_sink: &mut Signal<Arc<SoundSink>>, text: &str) {
+    println!("Trying to speak");
+
+    let mut samples: Vec<f32> = Vec::new();
+    let audio = synth.synthesize_parallel(text.to_string(), None).unwrap();
+    for result in audio {
+        samples.append(&mut result.unwrap().into_vec());
+    }
+
+    let buf = SamplesBuffer::new(1, 22050, samples);
+    let sound_sink = sound_sink.write();
+    sound_sink.sink.append(buf);
+
+    println!("Done speaking");
 }
