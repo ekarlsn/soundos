@@ -5,6 +5,7 @@ use components::Hero;
 mod components;
 mod menu;
 mod pods;
+mod sound;
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
