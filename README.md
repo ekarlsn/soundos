@@ -1,18 +1,17 @@
 # Development
 
-Your new jumpstart project includes basic organization with an organized `assets` folder and a `components` folder. 
-If you chose to develop with the router feature, you will also have a `views` folder.
+
+### Downaload speach syntesis files
+
+```bash
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_r/medium/en_US-libritts_r-medium.onnx
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_r/medium/en_US-libritts_r-medium.onnx.json
+```
 
 ### Serving Your App
 
-Run the following command in the root of your project to start developing with the default platform:
+Run the following command in the root of your project to start developing for linux:
 
 ```bash
-dx serve
+dx serve --platform linux
 ```
-
-To run for a different platform, use the `--platform platform` flag. E.g.
-```bash
-dx serve --platform desktop
-```
-
