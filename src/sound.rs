@@ -4,10 +4,10 @@ use piper_rs::synth::PiperSpeechSynthesizer;
 use rodio::buffer::SamplesBuffer;
 
 pub struct SoundHandle {
-    // Speach
-    speach_stream: rodio::OutputStream,
-    speach_handle: rodio::OutputStreamHandle,
-    speach_sink: rodio::Sink,
+    // Speech
+    speech_stream: rodio::OutputStream,
+    speech_handle: rodio::OutputStreamHandle,
+    speech_sink: rodio::Sink,
     synth: PiperSpeechSynthesizer,
 
     // Music
@@ -22,16 +22,16 @@ impl SoundHandle {
         let model = piper_rs::from_config_path(Path::new(config_path)).unwrap();
         let synth = PiperSpeechSynthesizer::new(model).unwrap();
 
-        let (speach_stream, speach_handle) = rodio::OutputStream::try_default().unwrap();
-        let speach_sink = rodio::Sink::try_new(&speach_handle).unwrap();
+        let (speech_stream, speech_handle) = rodio::OutputStream::try_default().unwrap();
+        let speech_sink = rodio::Sink::try_new(&speech_handle).unwrap();
 
         let (music_stream, music_handle) = rodio::OutputStream::try_default().unwrap();
         let music_sink = rodio::Sink::try_new(&music_handle).unwrap();
 
         SoundHandle {
-            speach_stream,
-            speach_handle,
-            speach_sink,
+            speech_stream,
+            speech_handle,
+            speech_sink,
             synth,
             music_stream,
             music_handle,
@@ -52,7 +52,7 @@ impl SoundHandle {
         }
 
         let buf = SamplesBuffer::new(1, 22050, samples);
-        self.speach_sink.append(buf);
+        self.speech_sink.append(buf);
 
         println!("Done speaking");
     }

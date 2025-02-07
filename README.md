@@ -1,7 +1,7 @@
 # Development
 
 
-### Downaload speach syntesis files
+### Downaload speech syntesis files
 
 ```bash
 wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_r/medium/en_US-libritts_r-medium.onnx
