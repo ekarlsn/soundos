@@ -1,7 +1,7 @@
-use std::path::Path;
+use std::{io::BufReader, path::Path};
 
 use piper_rs::synth::PiperSpeechSynthesizer;
-use rodio::buffer::SamplesBuffer;
+use rodio::{buffer::SamplesBuffer, Source};
 
 pub struct SoundHandle {
     // Speech
@@ -13,7 +13,7 @@ pub struct SoundHandle {
     // Music
     music_stream: rodio::OutputStream,
     music_handle: rodio::OutputStreamHandle,
-    music_sink: rodio::Sink,
+    pub music_sink: rodio::Sink,
 }
 
 impl SoundHandle {
@@ -52,8 +52,24 @@ impl SoundHandle {
         }
 
         let buf = SamplesBuffer::new(1, 22050, samples);
+        self.music_sink.pause();
         self.speech_sink.append(buf);
 
         println!("Done speaking");
+    }
+
+    pub fn play_music(&mut self, source: BufReader<std::fs::File>) {
+        let source = rodio::Decoder::new(source).unwrap();
+        self.music_sink.clear();
+        self.music_sink.append(source);
+        self.music_sink.play();
+    }
+
+    pub fn resume_music(&mut self) {
+        self.music_sink.play();
+    }
+
+    pub fn pause_music(&mut self) {
+        self.music_sink.pause();
     }
 }

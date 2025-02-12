@@ -3,6 +3,7 @@ use dioxus::prelude::*;
 use components::Hero;
 
 mod components;
+mod file_cache;
 mod menu;
 mod pods;
 mod sound;

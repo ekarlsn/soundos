@@ -11,7 +11,7 @@ pub fn Hero() -> Element {
     // Sound sink
     let mut sound_handle = use_signal(|| SoundHandle::new());
 
-    let mut pod_state = use_signal(|| pods::State { id: 5 });
+    let mut pod_state = use_signal(pods::init);
 
     // The menu navigation
     let mut menu = use_signal(|| Menu {
@@ -31,11 +31,13 @@ pub fn Hero() -> Element {
     });
 
     let active_menu = get_items_deep(&cursor.read().items, &menu.read()).unwrap();
-    let last_cursor = cursor.read().items.last().unwrap().clone();
-    let active_index = active_menu
-        .iter()
-        .position(|item| item == last_cursor.as_str())
-        .unwrap();
+    let active_index = {
+        let last_cursor = cursor.read().items.last().unwrap().clone();
+        active_menu
+            .iter()
+            .position(|item| item == last_cursor.as_str())
+            .unwrap()
+    };
 
     rsx! {
         div {
@@ -46,7 +48,10 @@ pub fn Hero() -> Element {
                     button {
                         id: "Up",
                         onclick: move |_| {
-                            move_menu_position(&mut cursor.write(), &mut menu, Dir::Up, &mut sound_handle, &mut pod_state);
+                            let mut cursor = cursor.clone();
+                            async move {
+                                move_menu_position(&mut cursor.write(), &mut menu, Dir::Up, &mut sound_handle, &mut pod_state).await;
+                            }
                         },
                         "Up"
                     }
@@ -55,7 +60,10 @@ pub fn Hero() -> Element {
                     button {
                         id: "Down",
                         onclick: move |_| {
-                            move_menu_position(&mut cursor.write(), &mut menu, Dir::Down,  &mut sound_handle, &mut pod_state);
+                            let mut cursor = cursor;
+                            async move {
+                                move_menu_position(&mut cursor.write(), &mut menu, Dir::Down,  &mut sound_handle, &mut pod_state).await;
+                            }
                         },
                         "Down"
                     }
@@ -64,14 +72,20 @@ pub fn Hero() -> Element {
                     button {
                         id: "Left",
                         onclick: move |_| {
-                            move_menu_position(&mut cursor.write(), &mut menu, Dir::Left,  &mut sound_handle, &mut pod_state);
+                            let mut cursor = cursor;
+                            async move {
+                                move_menu_position(&mut cursor.write(), &mut menu, Dir::Left,  &mut sound_handle, &mut pod_state).await;
+                            }
                         },
                         "Left"
                     }
                     button {
                         id: "Right",
                         onclick: move |_| {
-                            move_menu_position(&mut cursor.write(), &mut menu, Dir::Right,  &mut sound_handle, &mut pod_state);
+                            let mut cursor = cursor;
+                            async move {
+                                move_menu_position(&mut cursor.write(), &mut menu, Dir::Right,  &mut sound_handle, &mut pod_state).await;
+                            }
                         },
                         "Right"
                     }
@@ -107,7 +121,7 @@ enum Dir {
     Right,
 }
 
-fn move_menu_position(
+async fn move_menu_position(
     cursor: &mut Cursor,
     menu: &mut Signal<Menu>,
     direction: Dir,
@@ -117,8 +131,9 @@ fn move_menu_position(
     if direction == Dir::Right {
         let action = match cursor.top() {
             pods::TOP_NAME => {
-                pods::pressed_right(cursor, &mut pod_state.write(), &mut sound_handle.write())
+                pods::pressed_right(cursor, &mut pod_state.write(), &mut sound_handle.write()).await
             }
+            "Settings" => PressedRightReturn::Say("No settings".to_owned()),
             _ => panic!("Pressed something unknown"),
         };
 

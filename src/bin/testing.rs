@@ -1,47 +1,64 @@
-/*
-git submodule update --init
-
-** You can specify speaker id in the last argumnet
-
-wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_r/medium/en_US-libritts_r-medium.onnx
-wget https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_r/medium/en_US-libritts_r-medium.onnx.json
-cargo run --example usage en_US-libritts_r-medium.onnx.json 80
-*/
-
-use piper_rs::synth::PiperSpeechSynthesizer;
-use rodio::buffer::SamplesBuffer;
-use std::path::Path;
+use std::io::Write;
 
 fn main() {
-    let config_path = std::env::args().nth(1).expect("Please specify config path");
-    let sid = std::env::args().nth(2);
+    println!("Hello");
 
-    let model = piper_rs::from_config_path(Path::new(&config_path)).unwrap();
-    // Set speaker ID
-    if let Some(sid) = sid {
-        let sid = sid.parse::<i64>().expect("Speaker ID should be number!");
-        model.set_speaker(sid);
-    }
-    let synth = PiperSpeechSynthesizer::new(model).unwrap();
+    println!("Reqwesting");
+    let content = reqwest::blocking::get("https://api.sr.se/api/rss/pod/itunes/46690")
+        .unwrap()
+        .bytes()
+        .unwrap();
+    let feed = feed_rs::parser::parse(&content[..]).unwrap();
 
-    for text in &[
-        "Warmup",
-        "Pods",
-        "Software Unscripted",
-        "Testing in production",
-    ] {
-        let mut samples: Vec<f32> = Vec::new();
-        let audio = synth.synthesize_parallel(text.to_string(), None).unwrap();
-        for result in audio {
-            samples.append(&mut result.unwrap().into_vec());
-        }
+    let url = feed
+        .entries
+        .first()
+        .unwrap()
+        .media
+        .first()
+        .unwrap()
+        .content
+        .first()
+        .unwrap()
+        .url
+        .as_ref()
+        .unwrap();
+    // .path()
+    // .to_owned();
+    // let url = ep.links.first().unwrap().href.clone();
 
-        let (_stream, handle) = rodio::OutputStream::try_default().unwrap();
-        let sink = rodio::Sink::try_new(&handle).unwrap();
+    let sound_file = reqwest::blocking::get(url.clone()).unwrap();
+    let mut file = std::fs::File::create("/tmp/sound_file.mp3").unwrap();
+    file.write_all(&sound_file.bytes().unwrap()).unwrap();
 
-        let buf = SamplesBuffer::new(1, 22050, samples);
-        sink.append(buf);
+    println!("{:?}", url);
 
-        sink.sleep_until_end();
-    }
+    use rodio::{source::Source, Decoder, OutputStream};
+    use std::fs::File;
+    use std::io::BufReader;
+
+    // Get an output stream handle to the default physical sound device.
+    // Note that no sound will be played if _stream is dropped
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let sink = rodio::Sink::try_new(&stream_handle).unwrap();
+    // Load a sound from a file, using a path relative to Cargo.toml
+    let file = BufReader::new(File::open("/tmp/sound_file.mp3").unwrap());
+    // Decode that sound file into a source
+    let source = Decoder::new(file).unwrap();
+    // Play the sound directly on the device
+    sink.append(source);
+
+    // The sound plays in a separate audio thread,
+    // so we need to keep the main thread alive while it's playing.
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
+    // println!("{:?}", url);
 }
+/*
+Some(Text { content_type: MediaTypeBuf { data: "text/plain", indices: Indices { ty: 4, subty: 5, suffix: 0, params: [] } }, src: None, content: "Språkbiten 2013-12-21 kl. 08.50" }): [Link { href: "https://sverigesradio.se/avsnitt/294977", rel: None, media_type: None, href_lang: None, title: None, length: None }]
+"https://sverigesradio.se/avsnitt/2543468"
+Feed { feed_type: RSS2, id: "a440de27484a7d31bf69348476fb163a", title: Some(Text { content_type: MediaTypeBuf { data: "text/plain", indices: Indices { ty: 4, subty: 5, suffix: 0, params: [] } }, src: None, content: "Språket" }), updated: Some(2025-02-12T16:03:32Z), authors: [Person { name: "Sveriges Radio", uri: None, email: None }], description: Some(Text { content_type: MediaTypeBuf { data: "text/plain", indices: Indices { ty: 4, subty: 5, suffix: 0, params: [] } }, src: None, content: "En podd om hur språk används och förändras. Här kan du som lyssnare ställa dina språkfrågor. Programledare Emmy Rasper. <a href=\"https://sverigesradio.se/play/program/411?utm_source=thirdparty&utm_medium=rss&utm_campaign=program_spraket\">Lyssna på alla avsnitt i Sveriges Radio Play.</a>\r\nAnsvarig utgivare: Sabina Schatzl" }), links: [Link { href: "https://api.sr.se/api/rss/pod/itunes/46690", rel: Some("self"), media_type: Some("application/rss+xml"), href_lang: None, title: None, length: None }, Link { href: "https://sverigesradio.se/spraket", rel: None, media_type: None, href_lang: None, title: None, length: None }], categories: [Category { term: "Science", scheme: None, label: None, subcategories: [] }], contributors: [Person { name: "Språket", uri: None, email: Some("podd@sverigesradio.se") }], generator: None, icon: None, language: Some("sv"), logo: Some(Image { uri: "https://static-cdn.sr.se/images/411/50975663-27e5-4bde-bab7-9e952808807b.jpg?preset=api-itunes-presentation-image", title: Some("Språket"), link: Some(Link { href: "https://sverigesradio.se/spraket", rel: None, media_type: None, href_lang: None, title: None, length: None }), width: None, height: None, description: None }), published: None, rating: None, rights: Some(Text { content_type: MediaTypeBuf { data: "text/plain", indices: Indices { ty: 4, subty: 5, suffix: 0, params: [] } }, src: None, content: "Copyright Sveriges Radio 2025. All rights reserved." }), ttl: None, entries: [Entry { id: "rss:sr.se/pod/eid/2543468", title: Some(Text { content_type: MediaTypeBuf { data: "text/plain", indices: Indices { ty: 4, subty: 5, suffix: 0, params: [] } }, src: None, content: "Äldre släktingar säger konstiga saker igen" }), updated: Some(2025-02-10T04:00:00Z), authors: [], content: None, links: [Link { href: "https://sverigesradio.se/avsnitt/2543468", rel: None, media_type: None, href_lang: None, title: None, length: None }], summary: Some(Text { content_type: MediaTypeBuf { data: "text/html", indices: Indices { ty: 4, subty: 4, suffix: 0, params: [] } }, src: None, content: "<p>Min farfar född 1880, sa alltid... Språkets lyssnare fundera på vad deras släktingar verkligen sa. Det visar sig att vissa ord är användbara idag.</p><p> <a href=\"https://sverigesradio.se/play/program/411?utm_source=thirdparty&utm_medium=rss&utm_campaign=episode_spraket\">Lyssna på alla avsnitt i Sveriges Radio Play.</a></p> <p>– Ålderdomliga uttryck kan leva kvar i dialekter i olika delar av landet, säger <strong>Henrik Rosenkvist</strong>, <em>professor i nordiska språk</em>.</p><h2 class=\"mellanrubrik\">Finns många nedsättande termer för olika personer i dialekterna</h2><p>– Man kunde säga både ledben och ledmes. Det finns ganska mycket sådana här nedsättande termer i dialekterna för olika personer, säger Henrik Rosenkivst.</p><h2 class=\"mellanrubrik\">Språkfrågor om äldre ord och uttryck från lyssnarnas släktingar</h2><p>”Min farmor och mormor kom från Falun och föddes båda 1912. De använde ordet ”rämmil” om skräp och ”leben” om en elak person. Är orden dialektala eller finns de också i andra delar av landet?”</p><p>”Jag växte växte upp i Vimmerby på 60- och 70-talet och sa då ”sinked”, ”hörk” och ”skate”. Är det dialektala ord och varifrån kommer de?”</p><p>”Min farfar föddes i Tidaholms kommun år 1880 och sa ”Är i långe här?” när vi kom på besök. Finns ordet ”långe” i betydelsen ”redan” belagt även från andra platser?”</p><p>”Jag fick lära mig ordet ”översiggiven”, alltså ”förtvivlad”, som barn. Är det ett ord som finns i svenskan generellt eller är det dialektalt?”</p><p>”Min farmor föddes i Farstorp i Skåne och sa ”vinner” till ”orka” och ”nänns” till ”våga”. Var kommer de uttrycken ifrån?”</p><p>”Min mormor var född i Ångermanland i slutet av 1800-talet och sa ”Man ävles och ävles” vilket betyder att man kämpar på. Varifrån kommer verbet ävles?”</p><p>”Varifrån kommer ordet ”hänne” i meningen ”var är Mette, hänne?” i leken titt-ut?”</p><h2 class=\"mellanrubrik\">Lär dig mer om gamla ord och uttryck</h2><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://www.isof.se/namn/ortnamn/vara-ortnamnssamlingar/ortnamnsregistret\">Ortnamnsregistret</a> hos ISOF.</p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://svenska.se/\">SAOB</a> utgiven av Svenska Akademien.</p><p>Läs mer om<strong> </strong><a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://www.isof.se/utforska/publikationer/publikationer/2021-05-31-ordbok-over-folkmalen-i-ovre-dalarna\">Ordbok över folkmålen i övre Dalarna</a></p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://urn.kb.se/resolve?urn=urn:nbn:se:lb-lb261589-faksimil\">Svenskt dialektlexikon</a> av Johan Ernst Rietz via Litteraturbanken.</p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://runeberg.org/dialektl/\">Svenskt dialektlexikon</a> av Johan Ernst Rietz via Projekt Runeberg.</p><p></p><p>Språkvetare <strong>Henrik Rosenkvist</strong>, <em>professor i nordiska språk vid Göteborgs universitet</em>. Programledare <strong>Emmy Rasper</strong>.</p><p></p>" }), categories: [], contributors: [], published: Some(2025-02-10T04:00:00Z), source: None, rights: None, media: [MediaObject { title: None, content: [MediaContent { url: Some(Url { scheme: "https", cannot_be_a_base: false, username: "", password: None, host: Some(Domain("www.sverigesradio.se")), port: None, path: "/topsy/ljudfil/itunes/9654466.mp3",
+
+Entry { id: "rss:sr.se/pod/eid/2543468", title: Some(Text { content_type: MediaTypeBuf { data: "text/plain", indices: Indices { ty: 4, subty: 5, suffix: 0, params: [] } }, src: None, content: "Äldre släktingar säger konstiga saker igen" }), updated: Some(2025-02-10T04:00:00Z), authors: [], content: None, links: [Link { href: "https://sverigesradio.se/avsnitt/2543468", rel: None, media_type: None, href_lang: None, title: None, length: None }], summary: Some(Text { content_type: MediaTypeBuf { data: "text/html", indices: Indices { ty: 4, subty: 4, suffix: 0, params: [] } }, src: None, content: "<p>Min farfar född 1880, sa alltid... Språkets lyssnare fundera på vad deras släktingar verkligen sa. Det visar sig att vissa ord är användbara idag.</p><p> <a href=\"https://sverigesradio.se/play/program/411?utm_source=thirdparty&utm_medium=rss&utm_campaign=episode_spraket\">Lyssna på alla avsnitt i Sveriges Radio Play.</a></p> <p>– Ålderdomliga uttryck kan leva kvar i dialekter i olika delar av landet, säger <strong>Henrik Rosenkvist</strong>, <em>professor i nordiska språk</em>.</p><h2 class=\"mellanrubrik\">Finns många nedsättande termer för olika personer i dialekterna</h2><p>– Man kunde säga både ledben och ledmes. Det finns ganska mycket sådana här nedsättande termer i dialekterna för olika personer, säger Henrik Rosenkivst.</p><h2 class=\"mellanrubrik\">Språkfrågor om äldre ord och uttryck från lyssnarnas släktingar</h2><p>”Min farmor och mormor kom från Falun och föddes båda 1912. De använde ordet ”rämmil” om skräp och ”leben” om en elak person. Är orden dialektala eller finns de också i andra delar av landet?”</p><p>”Jag växte växte upp i Vimmerby på 60- och 70-talet och sa då ”sinked”, ”hörk” och ”skate”. Är det dialektala ord och varifrån kommer de?”</p><p>”Min farfar föddes i Tidaholms kommun år 1880 och sa ”Är i långe här?” när vi kom på besök. Finns ordet ”långe” i betydelsen ”redan” belagt även från andra platser?”</p><p>”Jag fick lära mig ordet ”översiggiven”, alltså ”förtvivlad”, som barn. Är det ett ord som finns i svenskan generellt eller är det dialektalt?”</p><p>”Min farmor föddes i Farstorp i Skåne och sa ”vinner” till ”orka” och ”nänns” till ”våga”. Var kommer de uttrycken ifrån?”</p><p>”Min mormor var född i Ångermanland i slutet av 1800-talet och sa ”Man ävles och ävles” vilket betyder att man kämpar på. Varifrån kommer verbet ävles?”</p><p>”Varifrån kommer ordet ”hänne” i meningen ”var är Mette, hänne?” i leken titt-ut?”</p><h2 class=\"mellanrubrik\">Lär dig mer om gamla ord och uttryck</h2><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://www.isof.se/namn/ortnamn/vara-ortnamnssamlingar/ortnamnsregistret\">Ortnamnsregistret</a> hos ISOF.</p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://svenska.se/\">SAOB</a> utgiven av Svenska Akademien.</p><p>Läs mer om<strong> </strong><a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://www.isof.se/utforska/publikationer/publikationer/2021-05-31-ordbok-over-folkmalen-i-ovre-dalarna\">Ordbok över folkmålen i övre Dalarna</a></p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://urn.kb.se/resolve?urn=urn:nbn:se:lb-lb261589-faksimil\">Svenskt dialektlexikon</a> av Johan Ernst Rietz via Litteraturbanken.</p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://runeberg.org/dialektl/\">Svenskt dialektlexikon</a> av Johan Ernst Rietz via Projekt Runeberg.</p><p></p><p>Språkvetare <strong>Henrik Rosenkvist</strong>, <em>professor i nordiska språk vid Göteborgs universitet</em>. Programledare <strong>Emmy Rasper</strong>.</p><p></p>" }), categories: [], contributors: [], published: Some(2025-02-10T04:00:00Z), source: None, rights: None, media: [MediaObject { title: None, content: [MediaContent { url: Some(Url { scheme: "https", cannot_be_a_base: false, username: "", password: None, host: Some(Domain("www.sverigesradio.se")), port: None, path: "/topsy/ljudfil/itunes/9654466.mp3", query: None, fragment: None }), content_type: Some(MediaTypeBuf { data: "audio/mpeg", indices: Indices { ty: 5, subty: 4, suffix: 0, params: [] } }), height: None, width: None, duration: None, size: Some(28821228), rating: None }], duration: Some(1800s), thumbnails: [MediaThumbnail { image: Image { uri: "https://static-cdn.sr.se/images/411/dac9500d-a3af-4d62-8a51-cb0f3c259732.jpg?preset=api-itunes-presentation-image", title: None, link: None, width: None, height: None, description: None }, time: None }], texts: [], description: Some(Text { content_type: MediaTypeBuf { data: "text/plain", indices: Indices { ty: 4, subty: 5, suffix: 0, params: [] } }, src: None, content: "<p>Min farfar född 1880, sa alltid... Språkets lyssnare fundera på vad deras släktingar verkligen sa. Det visar sig att vissa ord är användbara idag.</p><p> <a href=\"https://sverigesradio.se/play/program/411?utm_source=thirdparty&utm_medium=rss&utm_campaign=episode_spraket\">Lyssna på alla avsnitt i Sveriges Radio Play.</a></p> <p>– Ålderdomliga uttryck kan leva kvar i dialekter i olika delar av landet, säger <strong>Henrik Rosenkvist</strong>, <em>professor i nordiska språk</em>.</p><h2 class=\"mellanrubrik\">Finns många nedsättande termer för olika personer i dialekterna</h2><p>– Man kunde säga både ledben och ledmes. Det finns ganska mycket sådana här nedsättande termer i dialekterna för olika personer, säger Henrik Rosenkivst.</p><h2 class=\"mellanrubrik\">Språkfrågor om äldre ord och uttryck från lyssnarnas släktingar</h2><p>”Min farmor och mormor kom från Falun och föddes båda 1912. De använde ordet ”rämmil” om skräp och ”leben” om en elak person. Är orden dialektala eller finns de också i andra delar av landet?”</p><p>”Jag växte växte upp i Vimmerby på 60- och 70-talet och sa då ”sinked”, ”hörk” och ”skate”. Är det dialektala ord och varifrån kommer de?”</p><p>”Min farfar föddes i Tidaholms kommun år 1880 och sa ”Är i långe här?” när vi kom på besök. Finns ordet ”långe” i betydelsen ”redan” belagt även från andra platser?”</p><p>”Jag fick lära mig ordet ”översiggiven”, alltså ”förtvivlad”, som barn. Är det ett ord som finns i svenskan generellt eller är det dialektalt?”</p><p>”Min farmor föddes i Farstorp i Skåne och sa ”vinner” till ”orka” och ”nänns” till ”våga”. Var kommer de uttrycken ifrån?”</p><p>”Min mormor var född i Ångermanland i slutet av 1800-talet och sa ”Man ävles och ävles” vilket betyder att man kämpar på. Varifrån kommer verbet ävles?”</p><p>”Varifrån kommer ordet ”hänne” i meningen ”var är Mette, hänne?” i leken titt-ut?”</p><h2 class=\"mellanrubrik\">Lär dig mer om gamla ord och uttryck</h2><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://www.isof.se/namn/ortnamn/vara-ortnamnssamlingar/ortnamnsregistret\">Ortnamnsregistret</a> hos ISOF.</p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://svenska.se/\">SAOB</a> utgiven av Svenska Akademien.</p><p>Läs mer om<strong> </strong><a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://www.isof.se/utforska/publikationer/publikationer/2021-05-31-ordbok-over-folkmalen-i-ovre-dalarna\">Ordbok över folkmålen i övre Dalarna</a></p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://urn.kb.se/resolve?urn=urn:nbn:se:lb-lb261589-faksimil\">Svenskt dialektlexikon</a> av Johan Ernst Rietz via Litteraturbanken.</p><p>Sök i <a class=\"external-link\" rel=\"noreferrer noopener nofollow\" target=\"_blank\" href=\"https://runeberg.org/dialektl/\">Svenskt dialektlexikon</a> av Johan Ernst Rietz via Projekt Runeberg.</p><p></p><p>Språkvetare <strong>Henrik Rosenkvist</strong>, <em>professor i nordiska språk vid Göteborgs universitet</em>. Programledare <strong>Emmy Rasper</strong>.</p><p></p>" }), community: None, credits: [MediaCredit { entity: "Sveriges Radio" }] }], language: None, base: None }
+"https://sverigesradio.se/avsnitt/2543468"
+*/
