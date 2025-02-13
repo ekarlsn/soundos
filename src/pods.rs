@@ -28,6 +28,7 @@ struct Episode {
     name: String,
     url: Url,
     file_path: Option<String>,
+    current_position: std::time::Duration,
 }
 
 pub fn init() -> State {
@@ -90,6 +91,7 @@ pub async fn pressed_right(
                         name: e.title.unwrap().content,
                         url,
                         file_path: None,
+                        current_position: std::time::Duration::from_secs(0),
                     };
                     pod.episodes.push(episode);
                 }
@@ -130,26 +132,31 @@ pub async fn pressed_right(
                 items: vec![
                     ("Download".to_owned(), MenuOrAction::Unknown),
                     ("Play".to_owned(), MenuOrAction::Unknown),
+                    ("Pause".to_owned(), MenuOrAction::Unknown),
                     ("Resume".to_owned(), MenuOrAction::Unknown),
                 ],
             },
         ),
         ["All", pod_name, episode_name, "Download"] => {
-            let pod = state.pods.iter().find(|pod| &pod.name == pod_name).unwrap();
-            let episode = pod
+            let episode = state
+                .pods
+                .iter_mut()
+                .find(|pod| &pod.name == pod_name)
+                .unwrap()
                 .episodes
-                .iter()
+                .iter_mut()
                 .find(|ep| &ep.name == episode_name)
                 .unwrap();
             let url = episode.url.clone();
             sound_handle.say("Downloading");
 
             let sound_file = reqwest::get(url.clone()).await.unwrap();
-            file_cache::create_file(
+            let filename = file_cache::create_file(
                 pod_name.to_string(),
                 episode_name.to_string(),
                 &sound_file.bytes().await.unwrap(),
             );
+            episode.file_path = Some(filename);
 
             sound_handle.say("Download complete");
 
@@ -169,6 +176,20 @@ pub async fn pressed_right(
         }
         ["All", pod_name, episode_name, "Resume"] => {
             sound_handle.resume_music();
+            PressedRightReturn::Nothing
+        }
+        ["All", pod_name, episode_name, "Pause"] => {
+            sound_handle.pause_music();
+            let episode = state
+                .pods
+                .iter_mut()
+                .find(|pod| &pod.name == pod_name)
+                .unwrap()
+                .episodes
+                .iter_mut()
+                .find(|ep| &ep.name == episode_name)
+                .unwrap();
+            episode.current_position = sound_handle.music_sink.get_pos();
             PressedRightReturn::Nothing
         }
         unhandled => panic!("Unhandled cursor state: {unhandled:?}"),

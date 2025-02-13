@@ -1,11 +1,13 @@
 use std::io::Write;
 
-pub fn create_file(namespace: String, name: String, content: &[u8]) {
+pub fn create_file(namespace: String, name: String, content: &[u8]) -> String {
     let namespace = filenamify::filenamify(namespace);
     let name = filenamify::filenamify(name);
-    std::fs::create_dir_all(format!("/tmp/soundos/{namespace}")).unwrap();
+    let full_path = format!("/tmp/soundos/{namespace}");
+    std::fs::create_dir_all(full_path.clone()).unwrap();
     let mut file = std::fs::File::create(format!("/tmp/soundos/{namespace}/{name}")).unwrap();
     file.write_all(content).unwrap();
+    full_path
 }
 
 pub fn read_file(namespace: String, name: String) -> Option<std::io::BufReader<std::fs::File>> {
