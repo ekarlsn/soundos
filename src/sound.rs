@@ -40,7 +40,7 @@ impl SoundHandle {
     }
 
     pub fn say(&mut self, text: &str) {
-        println!("Trying to speak");
+        println!("Saying {text}");
 
         let mut samples: Vec<f32> = Vec::new();
         let audio = self
@@ -52,10 +52,9 @@ impl SoundHandle {
         }
 
         let buf = SamplesBuffer::new(1, 22050, samples);
-        self.music_sink.pause();
+        self.speech_sink.clear();
         self.speech_sink.append(buf);
-
-        println!("Done speaking");
+        self.speech_sink.play();
     }
 
     pub fn play_music(&mut self, source: BufReader<std::fs::File>) {

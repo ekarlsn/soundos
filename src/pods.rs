@@ -95,6 +95,10 @@ pub async fn pressed_right(
                 }
             }
 
+            async_std::task::sleep(std::time::Duration::from_secs(5)).await;
+
+            sound_handle.say("Refresh done");
+
             PressedRightReturn::Nothing
         }
         ["All"] => {
@@ -126,7 +130,6 @@ pub async fn pressed_right(
                 items: vec![
                     ("Download".to_owned(), MenuOrAction::Unknown),
                     ("Play".to_owned(), MenuOrAction::Unknown),
-                    ("Pause".to_owned(), MenuOrAction::Unknown),
                     ("Resume".to_owned(), MenuOrAction::Unknown),
                 ],
             },
@@ -162,10 +165,6 @@ pub async fn pressed_right(
 
             sound_handle.say("Playing");
             sound_handle.play_music(file_content);
-            PressedRightReturn::Nothing
-        }
-        ["All", pod_name, episode_name, "Pause"] => {
-            sound_handle.pause_music();
             PressedRightReturn::Nothing
         }
         ["All", pod_name, episode_name, "Resume"] => {

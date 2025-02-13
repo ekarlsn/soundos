@@ -30,14 +30,21 @@ pub fn Hero() -> Element {
         items: vec!["Pods".to_owned()],
     });
 
-    let active_menu = get_items_deep(&cursor.read().items, &menu.read()).unwrap();
-    let active_index = {
-        let last_cursor = cursor.read().items.last().unwrap().clone();
-        active_menu
-            .iter()
-            .position(|item| item == last_cursor.as_str())
-            .unwrap()
+    let (active_menu, active_index) = {
+        let cursor = cursor;
+        let menu = menu;
+        let active_menu = get_items_deep(&cursor.read().items, &menu.read()).unwrap();
+        let active_index = {
+            let last_cursor = cursor.read().items.last().unwrap().clone();
+            active_menu
+                .iter()
+                .position(|item| item == last_cursor.as_str())
+                .unwrap()
+        };
+        (active_menu, active_index)
     };
+
+    let mut mutex = use_signal(|| Rc::new(async_mutex::Mutex::new(())));
 
     rsx! {
         div {
@@ -48,9 +55,12 @@ pub fn Hero() -> Element {
                     button {
                         id: "Up",
                         onclick: move |_| {
-                            let mut cursor = cursor.clone();
+                            let mut cursor = cursor;
+                            let mutex = mutex.write().clone();
                             async move {
-                                move_menu_position(&mut cursor.write(), &mut menu, Dir::Up, &mut sound_handle, &mut pod_state).await;
+                                if let Some(_lock) = mutex.try_lock() {
+                                    move_menu_position(&mut cursor.write(), &mut menu, Dir::Up, &mut sound_handle, &mut pod_state).await;
+                                }
                             }
                         },
                         "Up"
@@ -61,8 +71,11 @@ pub fn Hero() -> Element {
                         id: "Down",
                         onclick: move |_| {
                             let mut cursor = cursor;
+                            let mutex = mutex.write().clone();
                             async move {
-                                move_menu_position(&mut cursor.write(), &mut menu, Dir::Down,  &mut sound_handle, &mut pod_state).await;
+                                if let Some(_lock) = mutex.try_lock() {
+                                    move_menu_position(&mut cursor.write(), &mut menu, Dir::Down,  &mut sound_handle, &mut pod_state).await;
+                                }
                             }
                         },
                         "Down"
@@ -73,8 +86,11 @@ pub fn Hero() -> Element {
                         id: "Left",
                         onclick: move |_| {
                             let mut cursor = cursor;
+                            let mutex = mutex.write().clone();
                             async move {
-                                move_menu_position(&mut cursor.write(), &mut menu, Dir::Left,  &mut sound_handle, &mut pod_state).await;
+                                if let Some(_lock) = mutex.try_lock() {
+                                    move_menu_position(&mut cursor.write(), &mut menu, Dir::Left,  &mut sound_handle, &mut pod_state).await;
+                                }
                             }
                         },
                         "Left"
@@ -83,8 +99,15 @@ pub fn Hero() -> Element {
                         id: "Right",
                         onclick: move |_| {
                             let mut cursor = cursor;
+                            let mutex = mutex.write().clone();
                             async move {
-                                move_menu_position(&mut cursor.write(), &mut menu, Dir::Right,  &mut sound_handle, &mut pod_state).await;
+                                if let Some(_lock) = mutex.try_lock() {
+                                    println!("Lock aquired");
+                                    move_menu_position(&mut cursor.write(), &mut menu, Dir::Right,  &mut sound_handle, &mut pod_state).await;
+                                    println!("Releasing lock");
+                                } else {
+                                    println!("Lock already aquired");
+                                }
                             }
                         },
                         "Right"
@@ -147,6 +170,7 @@ async fn move_menu_position(
             PressedRightReturn::Say(say) => sound_handle.write().say(&say),
         }
     } else {
+        sound_handle.write().pause_music();
         let say = update_cursor_uld(cursor, &menu.read(), direction);
         if let Some(say) = say {
             sound_handle.write().say(&say);
