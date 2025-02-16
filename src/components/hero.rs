@@ -9,7 +9,7 @@ const HEADER_SVG: Asset = asset!("/assets/header.svg");
 #[component]
 pub fn Hero() -> Element {
     // Sound sink
-    let mut sound_handle = use_signal(|| SoundHandle::new());
+    let mut sound_handle = use_signal(SoundHandle::new);
 
     let mut pod_state = use_signal(pods::init);
 
@@ -26,7 +26,7 @@ pub fn Hero() -> Element {
         ],
     });
 
-    let mut cursor = use_signal(|| Cursor {
+    let cursor = use_signal(|| Cursor {
         items: vec!["Pods".to_owned()],
     });
 
@@ -251,7 +251,7 @@ fn update_cursor_uld(cursor: &mut Cursor, menu: &Menu, direction: Dir) -> Option
             return None;
         }
     }
-    return None;
+    None
 }
 
 fn get_items_deep(cursor: &[String], menu: &Menu) -> Option<Vec<String>> {

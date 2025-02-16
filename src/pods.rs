@@ -1,14 +1,9 @@
-use std::{
-    io::{BufReader, Write},
-    rc::Rc,
-};
 
 use reqwest::Url;
-use rodio::Decoder;
 
 use crate::{
     file_cache,
-    menu::{self, Cursor, Menu, MenuAction, MenuOrAction, PressedRightReturn},
+    menu::{Cursor, Menu, MenuOrAction, PressedRightReturn},
     sound::SoundHandle,
 };
 

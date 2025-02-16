@@ -33,7 +33,7 @@ fn main() {
 
     println!("{:?}", url);
 
-    use rodio::{source::Source, Decoder, OutputStream};
+    use rodio::{Decoder, OutputStream};
     use std::fs::File;
     use std::io::BufReader;
 
