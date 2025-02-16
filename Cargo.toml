@@ -13,14 +13,17 @@ base64 = "0.22.1"
 dioxus = { version = "0.6.0", features = [] }
 feed-rs = "2.3.1"
 filenamify = "0.1.2"
-piper-rs = "0.1.9"
-reqwest = { version = "0.12.12", features = ["blocking"] }
+piper-rs = { version = "0.1.9", optional = true }
+reqwest = { version = "0.12.12", features = [
+    "blocking",
+    "native-tls-vendored",
+] }
 rodio = "0.20.1"
 
 [features]
 default = ["desktop"]
 web = ["dioxus/web"]
-desktop = ["dioxus/desktop"]
+desktop = ["dioxus/desktop", "piper-rs"]
 mobile = ["dioxus/mobile"]
 
 [profile.wasm-dev]

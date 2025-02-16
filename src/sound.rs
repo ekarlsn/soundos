@@ -1,6 +1,5 @@
 use std::{io::BufReader, path::Path};
 
-use piper_rs::synth::PiperSpeechSynthesizer;
 use rodio::{buffer::SamplesBuffer, Source};
 
 pub struct SoundHandle {
@@ -8,7 +7,9 @@ pub struct SoundHandle {
     speech_stream: rodio::OutputStream,
     speech_handle: rodio::OutputStreamHandle,
     speech_sink: rodio::Sink,
-    synth: PiperSpeechSynthesizer,
+
+    #[cfg(feature = "desktop")]
+    synth: piper_rs::synth::PiperSpeechSynthesizer,
 
     // Music
     music_stream: rodio::OutputStream,
@@ -18,9 +19,12 @@ pub struct SoundHandle {
 
 impl SoundHandle {
     pub fn new() -> Self {
-        let config_path = "en_US-libritts_r-medium.onnx.json";
-        let model = piper_rs::from_config_path(Path::new(config_path)).unwrap();
-        let synth = PiperSpeechSynthesizer::new(model).unwrap();
+        #[cfg(feature = "desktop")]
+        let synth = {
+            let config_path = "en_US-libritts_r-medium.onnx.json";
+            let model = piper_rs::from_config_path(Path::new(config_path)).unwrap();
+            piper_rs::synth::PiperSpeechSynthesizer::new(model).unwrap()
+        };
 
         let (speech_stream, speech_handle) = rodio::OutputStream::try_default().unwrap();
         let speech_sink = rodio::Sink::try_new(&speech_handle).unwrap();
@@ -32,6 +36,7 @@ impl SoundHandle {
             speech_stream,
             speech_handle,
             speech_sink,
+            #[cfg(feature = "desktop")]
             synth,
             music_stream,
             music_handle,
@@ -42,14 +47,21 @@ impl SoundHandle {
     pub fn say(&mut self, text: &str) {
         println!("Saying {text}");
 
-        let mut samples: Vec<f32> = Vec::new();
-        let audio = self
-            .synth
-            .synthesize_parallel(text.to_string(), None)
-            .unwrap();
-        for result in audio {
-            samples.append(&mut result.unwrap().into_vec());
-        }
+        #[cfg(feature = "desktop")]
+        let samples: Vec<f32> = {
+            let mut samples: Vec<f32> = Vec::new();
+            let audio = self
+                .synth
+                .synthesize_parallel(text.to_string(), None)
+                .unwrap();
+            for result in audio {
+                samples.append(&mut result.unwrap().into_vec());
+            }
+            samples
+        };
+
+        #[cfg(feature = "mobile")]
+        let samples: Vec<f32> = Vec::new();
 
         let buf = SamplesBuffer::new(1, 22050, samples);
         self.speech_sink.clear();
