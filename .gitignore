@@ -7,3 +7,5 @@
 **/*.rs.bk
 en_US-libritts_r-medium.onnx
 en_US-libritts_r-medium.onnx.json
+hifigan_v2.onnx
+matcha-icefall-en_US-ljspeech/
