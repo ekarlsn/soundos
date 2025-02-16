@@ -16,6 +16,13 @@ Run the following command in the root of your project to start developing for li
 dx serve --platform linux
 ```
 
+# Linux problems
+
+When running the app on linux, can't find sherpa c-api library.
+
+export LD_LIBRARY_PATH=target/debug/
+
+
 ### Android problems
 
 export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/
