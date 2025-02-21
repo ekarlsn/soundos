@@ -79,17 +79,17 @@ impl SoundHandle {
     }
 
     pub fn play_music(&mut self, source: BufReader<std::fs::File>) {
-        // let source = rodio::Decoder::new(source).unwrap();
-        // self.music_sink.clear();
-        // self.music_sink.append(source);
-        // self.music_sink.play();
+        let source = rodio::Decoder::new(source).unwrap();
+        self.music_sink.clear();
+        self.music_sink.append(source);
+        self.music_sink.play();
     }
 
     pub fn resume_music(&mut self) {
-        // self.music_sink.play();
+        self.music_sink.play();
     }
 
     pub fn pause_music(&mut self) {
-        // self.music_sink.pause();
+        self.music_sink.pause();
     }
 }
