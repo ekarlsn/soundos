@@ -7,6 +7,7 @@ use std::rc::Rc;
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
 
 #[component]
+#[allow(non_snake_case)]
 pub fn Hero() -> Element {
     // Sound sink
     let mut sound_handle = use_signal(SoundHandle::new);
@@ -46,11 +47,16 @@ pub fn Hero() -> Element {
 
     let mut mutex = use_signal(|| Rc::new(async_mutex::Mutex::new(())));
 
+    let mut breed = use_signal(|| "https://images.dog.ceo/breeds/shiba/shiba-1.jpg".to_owned());
+
     rsx! {
         div {
             id: "hero",
             img { src: HEADER_SVG, id: "header" }
             ul {
+                li {
+                    BreedPic { breed }
+                }
                 li {
                     button {
                         id: "Up",
@@ -279,4 +285,32 @@ fn get_menu_selection<'a>(menu_item: &str, menu: &'a Menu) -> &'a MenuOrAction {
         .find(|(item, _)| item == &menu_item)
         .map(|(_, menu_or_action)| menu_or_action)
         .unwrap()
+}
+
+#[component]
+fn BreedPic(breed: Signal<String>) -> Element {
+    // This resource will restart whenever the breed changes
+    let mut fut = use_resource(move || async move {
+        #[derive(serde::Deserialize, Debug)]
+        struct DogApi {
+            message: String,
+        }
+
+        reqwest::get(format!("https://dog.ceo/api/breed/{breed}/images/random"))
+            .await
+            .unwrap()
+            .json::<DogApi>()
+            .await
+    });
+
+    match fut.read_unchecked().as_ref() {
+        Some(Ok(resp)) => rsx! {
+            div {
+                button { onclick: move |_| fut.restart(), padding: "5px", background_color: "gray", color: "white", border_radius: "5px", "Click to fetch another doggo" }
+                img { max_width: "500px", max_height: "500px", src: "{resp.message}" }
+            }
+        },
+        Some(Err(_)) => rsx! { "loading image failed" },
+        None => rsx! { "loading image 2..." },
+    }
 }

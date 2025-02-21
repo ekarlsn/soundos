@@ -1,4 +1,3 @@
-
 use reqwest::Url;
 
 use crate::{
@@ -56,15 +55,24 @@ pub async fn pressed_right(
             },
         ),
         ["Refresh"] => {
-            sound_handle.say("Refreshing");
+            sound_handle.say("Refreshing 2");
 
             for pod in state.pods.iter_mut() {
-                let content = reqwest::get(pod.rss_url.as_str())
-                    .await
-                    .unwrap()
-                    .bytes()
-                    .await
-                    .unwrap();
+                let content = match reqwest::get(pod.rss_url.as_str()).await {
+                    Ok(content) => content,
+                    Err(e) => {
+                        sound_handle.say(
+                            format!("Failed to fetch RSS feed {}, error: {:?}", pod.name, e)
+                                .as_str(),
+                        );
+                        continue;
+                    }
+                };
+
+                let Ok(content) = content.bytes().await else {
+                    sound_handle.say(format!("Failed to read RSS feed {}", pod.name).as_str());
+                    continue;
+                };
                 let feed = feed_rs::parser::parse(&content[..]).unwrap();
 
                 pod.episodes.clear();
@@ -184,7 +192,7 @@ pub async fn pressed_right(
                 .iter_mut()
                 .find(|ep| &ep.name == episode_name)
                 .unwrap();
-            episode.current_position = sound_handle.music_sink.get_pos();
+            // episode.current_position = sound_handle.music_sink.get_pos();
             PressedRightReturn::Nothing
         }
         unhandled => panic!("Unhandled cursor state: {unhandled:?}"),

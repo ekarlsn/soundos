@@ -13,27 +13,30 @@ base64 = "0.22.1"
 dioxus = { version = "0.6.0", features = [] }
 feed-rs = "2.3.1"
 filenamify = "0.1.2"
-piper-rs = { version = "0.1.9", optional = true }
-reqwest = { version = "0.12.12", features = [
-    "blocking",
-    "native-tls-vendored",
-] }
+reqwest = { version = "0.12.12", features = ["json"] }
 rodio = "0.20.1"
 oboe = { version = "0.6.1", features = [
-    "shared-stdcxx",
     "java-interface",
     "jni",
     "ndk",
     "ndk-context",
+    "shared-stdcxx",
 ], optional = true }
-sherpa-rs = { version = "0.6.5", features = ["tts"] }
+cpal = { version = "0.15.3", features = [] }
+serde = "1.0.218"
+# sherpa-rs = { version = "0.6.5", features = ["tts"] }
+[target.'cfg(target_os = "android")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 
 
 [features]
-default = ["desktop"]
+default = ["mobile"]
 web = ["dioxus/web"]
-desktop = ["dioxus/desktop", "piper-rs"]
+desktop = ["dioxus/desktop"]
 mobile = ["dioxus/mobile", "oboe"]
+# mobile = ["dioxus/mobile", "oboe"]
+
+[profile]
 
 [profile.wasm-dev]
 inherits = "dev"
