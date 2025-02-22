@@ -70,9 +70,19 @@ apk_path = (
     "target/dx/sound-os/debug/android/app/app/build/outputs/apk/debug/app-debug.apk"
 )
 cpp_lib_path = "/home/ekarls66/sdk/android/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so"
+sherpa_lib_path = (
+    REPO_ROOT / "target/aarch64-linux-android/debug/libsherpa-onnx-c-api.so"
+)
+onnxruntime_lib_path = (
+    REPO_ROOT / "target/aarch64-linux-android/debug/libonnxruntime.so"
+)
 injected_apk_path = "target/dx/sound-os/debug/android/app/app/build/outputs/apk/debug/app-debug-fixed.apk"
 zipaligned_path = "target/dx/sound-os/debug/android/app/app/build/outputs/apk/debug/app-debug-fixed-aligned.apk"
 
-inject_shared_libraries(apk_path, [cpp_lib_path], injected_apk_path)
+inject_shared_libraries(
+    apk_path,
+    [cpp_lib_path, str(sherpa_lib_path), str(onnxruntime_lib_path)],
+    injected_apk_path,
+)
 zipalign(injected_apk_path, zipaligned_path)
 resign(zipaligned_path)

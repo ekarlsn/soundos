@@ -24,7 +24,7 @@ oboe = { version = "0.6.1", features = [
 ], optional = true }
 cpal = { version = "0.15.3", features = [] }
 serde = "1.0.218"
-# sherpa-rs = { version = "0.6.5", features = ["tts"] }
+sherpa-rs = { version = "0.6.5", features = ["tts", "download-binaries"] }
 [target.'cfg(target_os = "android")'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }
 

@@ -22,6 +22,7 @@ fn main() {
 #[component]
 fn App() -> Element {
     // Build cool things ✌️
+    let mut has_tts_data = use_signal(|| false);
 
     rsx! {
         // Global app resources
@@ -29,7 +30,11 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
 
 
-        Hero {}
+        if has_tts_data.read() {
+            Hero {}
+        } else {
+            "Loading tts data..."
+        }
 
     }
 }

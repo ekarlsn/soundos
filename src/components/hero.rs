@@ -9,9 +9,7 @@ const HEADER_SVG: Asset = asset!("/assets/header.svg");
 #[component]
 #[allow(non_snake_case)]
 pub fn Hero() -> Element {
-    // Sound sink
     let mut sound_handle = use_signal(SoundHandle::new);
-
     let mut pod_state = use_signal(pods::init);
 
     // The menu navigation
@@ -27,10 +25,12 @@ pub fn Hero() -> Element {
         ],
     });
 
+    // Cursor
     let cursor = use_signal(|| Cursor {
         items: vec!["Pods".to_owned()],
     });
 
+    // Derived from menu + cursor
     let (active_menu, active_index) = {
         let cursor = cursor;
         let menu = menu;
@@ -45,6 +45,7 @@ pub fn Hero() -> Element {
         (active_menu, active_index)
     };
 
+    // Lock for all interactions
     let mut mutex = use_signal(|| Rc::new(async_mutex::Mutex::new(())));
 
     let mut breed = use_signal(|| "https://images.dog.ceo/breeds/shiba/shiba-1.jpg".to_owned());
