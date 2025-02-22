@@ -472,6 +472,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bzip2"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75b89e7c29231c673a61a46e722602bcd138298f6b9e81e71119693534585f5c"
+dependencies = [
+ "bzip2-sys",
+]
+
+[[package]]
 name = "bzip2-sys"
 version = "0.1.12+1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4654,7 +4663,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68a278c53c798f0f91223b3a4dab43e25ba8ddfa43019a2b175fbafc4754c8cd"
 dependencies = [
  "bindgen 0.69.5",
- "bzip2",
+ "bzip2 0.4.4",
  "cmake",
  "dirs 5.0.1",
  "flate2",
@@ -4792,6 +4801,7 @@ dependencies = [
  "async-mutex",
  "async-std",
  "base64",
+ "bzip2 0.5.1",
  "cpal",
  "dioxus",
  "feed-rs",
@@ -4802,6 +4812,7 @@ dependencies = [
  "rodio",
  "serde",
  "sherpa-rs",
+ "tar",
 ]
 
 [[package]]
@@ -5051,9 +5062,9 @@ dependencies = [
 
 [[package]]
 name = "tar"
-version = "0.4.43"
+version = "0.4.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c65998313f8e17d0d553d28f91a0df93e4dbbbf770279c7bc21ca0f09ea1a1f6"
+checksum = "1d863878d212c87a19c1a610eb53bb01fe12951c0501cf5a0d65f724914a667a"
 dependencies = [
  "filetime",
  "libc",

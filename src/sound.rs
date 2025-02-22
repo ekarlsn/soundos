@@ -1,6 +1,8 @@
 use dioxus::prelude::*;
 use std::{io::BufReader, path::Path};
 
+use crate::file_cache;
+
 pub struct SoundHandle {
     // Speech
     speech_stream: rodio::OutputStream,
@@ -14,16 +16,17 @@ pub struct SoundHandle {
     pub music_sink: rodio::Sink,
 }
 
-const TTS_MODEL: Asset = asset!("/assets/matcha-icefall-en_US-ljspeech");
-
 impl SoundHandle {
     pub fn new() -> Self {
+        let tts_model_path = file_cache::get_namespace_str("tts_model");
+        let tts_matcha_model_path = format!("{tts_model_path}/matcha-icefall-en_US-ljspeech");
+
         let tts = {
             let config = sherpa_rs::tts::MatchaTtsConfig {
-                acoustic_model: format!("{TTS_MODEL}/model-steps-3.onnx"),
-                vocoder: format!("{TTS_MODEL}/hifigan_v2.onnx"),
-                tokens: format!("{TTS_MODEL}/tokens.txt"),
-                data_dir: format!("{TTS_MODEL}/espeak-ng-data"),
+                acoustic_model: format!("{tts_matcha_model_path}/model-steps-3.onnx"),
+                vocoder: format!("{tts_model_path}/hifigan.onnx"),
+                tokens: format!("{tts_matcha_model_path}/tokens.txt"),
+                data_dir: format!("{tts_matcha_model_path}/espeak-ng-data"),
                 ..Default::default()
             };
             sherpa_rs::tts::MatchaTts::new(config)

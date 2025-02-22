@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use dioxus::prelude::*;
 
 use components::Hero;
@@ -22,7 +24,9 @@ fn main() {
 #[component]
 fn App() -> Element {
     // Build cool things ✌️
-    let mut has_tts_data = use_signal(|| false);
+    let fut = use_resource(move || async move { download_tts().await });
+
+    let tts_loaded = fut.read_unchecked().as_ref().is_some();
 
     rsx! {
         // Global app resources
@@ -30,8 +34,8 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
 
 
-        if has_tts_data() {
-            Hero {}
+        if tts_loaded {
+            Hero {},
         } else {
             "Loading tts data..."
         }
@@ -46,12 +50,43 @@ async fn download_tts() {
     // rm matcha-icefall-en_US-ljspeech.tar.bz2
     // reqwest::get("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-en_US-ljspeech.tar.bz2").await.unwrap();
 
+    if file_cache::file_exists("tts_model".to_owned(), "hifigan.onnx".to_owned()) {
+        println!("hifigan.onnx already exists");
+    } else {
+        let onnx_file = reqwest::get(
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/hifigan_v2.onnx",
+        )
+        .await
+        .unwrap();
+        let _filename = file_cache::create_file(
+            "tts_model".to_owned(),
+            "hifigan.onnx".to_owned(),
+            &onnx_file.bytes().await.unwrap(),
+        );
+    }
 
-    // let sound_file =  reqwest::get("https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/hifigan_v2.onnx").await.unwrap();
-    // let filename = file_cache::create_file(
-    //     pod_name.to_string(),
-    //     episode_name.to_string(),
-    //     &sound_file.bytes().await.unwrap(),
-    // );
-    // episode.file_path = Some(filename);
+    if file_cache::file_exists(
+        "tts_model".to_owned(),
+        "matcha-icefall-en_US-ljspeech".to_owned(),
+    ) {
+        println!("Unpacked tts model already exists, we're good");
+    } else {
+        let tar_file = reqwest::get(
+                        "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-en_US-ljspeech.tar.bz2",
+                    )
+                    .await
+                    .unwrap();
+        let tar_bytes = &tar_file.bytes().await.unwrap();
+
+        // Extract the tar.bz2 file
+        let tar_cursor = std::io::Cursor::new(tar_bytes);
+        let bz_decoder = bzip2::read::BzDecoder::new(tar_cursor);
+        let mut archive = tar::Archive::new(bz_decoder);
+
+        // Create the output directory if it doesn't exist
+        let output_dir = file_cache::make_namespace("tts_model");
+
+        // Unpack the archive
+        archive.unpack(output_dir).unwrap();
+    }
 }
