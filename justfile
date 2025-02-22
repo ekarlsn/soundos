@@ -14,6 +14,14 @@ android:
     ./inject_shared_libs_into_apk.py
     adb install target/dx/sound-os/debug/android/app/app/build/outputs/apk/debug/app-debug-fixed-aligned.apk
 
+serve-linux:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+
+    export LD_LIBRARY_PATH=target/debug
+
+    dx serve --platform linux
+
 linux:
     #!/usr/bin/env bash
     set -euxo pipefail

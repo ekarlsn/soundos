@@ -51,7 +51,30 @@ pub fn Hero() -> Element {
     rsx! {
         div {
             id: "hero",
-            img { src: HEADER_SVG, id: "header" }
+            onkeypress: move |event| {
+                println!("Key pressed {}", event.key());
+                let dir = match event.key() {
+                    keyboard_types::Key::Character(c) =>
+                        match c.as_str() {
+                            "a" =>  Some(Dir::Left),
+                            "o" =>  Some(Dir::Up),
+                            "e" =>  Some(Dir::Down),
+                            "u" =>  Some(Dir::Right),
+                            _ => None,
+                        }
+                    _ => None
+                };
+                let mut cursor = cursor;
+                let mutex = mutex.write().clone();
+                async move {
+                    if let Some(dir) = dir {
+                        if let Some(_lock) = mutex.try_lock() {
+                            move_menu_position(&mut cursor.write(), &mut menu, dir, &mut sound_handle, &mut pod_state).await;
+                        }
+                    }
+                }
+            },
+            img { src: HEADER_SVG, id: "header" },
             ul {
                 li {
                     button {
@@ -196,32 +219,6 @@ fn update_cursor_uld(cursor: &mut Cursor, menu: &Menu, direction: Dir) -> Option
             return None;
         }
     };
-
-    // if let Dir::Right = direction {
-    // let mut submenu = Some(menu);
-    // {
-    // let cursor_read = cursor.read();
-    // for (i, selected) in cursor_read.iter().enumerate() {
-    // submenu = match get_menu_selection(selected, submenu.unwrap()) {
-    // MenuOrAction::Menu(submenu) => Some(submenu),
-    // MenuOrAction::Action(action) => {
-    // if i == cursor.len() - 1 {
-    // Trying to go right on an action
-    // return (None, Some(action.clone()));
-    // } else {
-    // panic!(
-    // "Cursor is pointing at a menu item that does not exist: {selected}"
-    // );
-    // }
-    // }
-    // };
-    // }
-    // }
-    // let mut cursor_write = cursor.write();
-    // let new_menu_item = submenu.unwrap().items.first().unwrap().0.clone();
-    // cursor_write.push(new_menu_item.clone());
-    // return (Some(new_menu_item), None);
-    // }
 
     let active_list = get_items_deep(cursor.as_slice(), menu).unwrap();
     let last_cursor_index = cursor.len() - 1;
