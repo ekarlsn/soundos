@@ -1,8 +1,4 @@
 use dioxus::prelude::*;
-use oboe::{
-    AudioOutputCallback, AudioOutputStream, AudioStreamBuilder, DataCallbackResult, Mono,
-    PerformanceMode, SharingMode,
-};
 use std::{io::BufReader, path::Path};
 
 pub struct SoundHandle {

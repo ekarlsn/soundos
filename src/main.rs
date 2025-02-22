@@ -30,11 +30,28 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
 
 
-        if has_tts_data.read() {
+        if has_tts_data() {
             Hero {}
         } else {
             "Loading tts data..."
         }
 
     }
+}
+
+async fn download_tts() {
+    // wget https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-en_US-ljspeech.tar.bz2
+    // wget https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/hifigan_v2.onnx
+    // tar xvf matcha-icefall-en_US-ljspeech.tar.bz2
+    // rm matcha-icefall-en_US-ljspeech.tar.bz2
+    // reqwest::get("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-en_US-ljspeech.tar.bz2").await.unwrap();
+
+
+    // let sound_file =  reqwest::get("https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/hifigan_v2.onnx").await.unwrap();
+    // let filename = file_cache::create_file(
+    //     pod_name.to_string(),
+    //     episode_name.to_string(),
+    //     &sound_file.bytes().await.unwrap(),
+    // );
+    // episode.file_path = Some(filename);
 }
